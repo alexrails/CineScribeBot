@@ -1,0 +1,8 @@
+FROM public.ecr.aws/lambda/ruby:3.2
+
+COPY app/ ./
+
+ENV GEM_HOME=${LAMBDA_TASK_ROOT}
+RUN bundle install
+
+CMD ["webhooks.Webhooks::Handler.process"]

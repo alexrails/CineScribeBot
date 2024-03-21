@@ -1,0 +1,49 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  kinoman
+
+  Sample SAM Template for kinoman
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 256
+
+Resources:
+  MessagesBucket:
+    Type: AWS::S3::Bucket
+
+  WebhooksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Architectures:
+        - x86_64
+      FunctionUrlConfig:
+        AuthType: NONE
+      Environment:
+        Variables:
+          TG_TOKEN: '{{resolve:secretsmanager:CineScribeBot:SecretString:TG_TOKEN}}'
+          TMDB_TOKEN: '{{resolve:secretsmanager:CineScribeBot:SecretString:TMDB_TOKEN}}'
+          MESSAGES_BUCKET: !Ref MessagesBucket
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+                - s3:ListBucket
+              Resource:
+                - !Sub "${MessagesBucket.Arn}"
+                - !Sub "${MessagesBucket.Arn}/*"
+    Metadata:
+      DockerTag: ruby3.2-v1
+      DockerContext: ./
+      Dockerfile: app/Containerfile
+
+Outputs:
+  WebhooksURL:
+    Description: "Implicit IAM Role created for Hello World function"
+    Value: !GetAtt WebhooksFunctionUrl.FunctionUrl
