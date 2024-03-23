@@ -37,4 +37,13 @@ class Responser
       }
     }
   end
+
+  def send_inline_response(results)
+    body = {
+      inline_query_id: chat_id,
+      results: results.to_json
+    }
+
+    HTTParty.post("https://api.telegram.org/bot#{ENV["TG_TOKEN"]}/answerInlineQuery", body: body)
+  end
 end

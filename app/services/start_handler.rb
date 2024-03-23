@@ -6,9 +6,9 @@ class StartHandler
 
     message =
       "Hello, #{name}! Welcome to the CineScribeBot!\n
-      Use /search <movie title> to search for a movie.\n
-      Example: /search The Matrix\n
-      Enjoy!"
+    Use /search <movie title> to search for a movie.\n
+    Example: /search The Matrix\n
+    Enjoy!"
 
     Responser.new(chat_id).send_message(message)
   end
