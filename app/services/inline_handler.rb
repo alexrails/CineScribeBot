@@ -1,24 +1,24 @@
 require_relative "movies_handler"
 require_relative "responser"
-require_relative "../concerns/cache_strategy"
+require_relative "dynamo_storage"
+require_relative "queue_handler"
 
 class InlineHandler
   extend MoviesHandler
-  extend CacheStrategy
   
   class << self
     def process(inline_query)
-      query_id = inline_query['id']
-      title = inline_query['query']
+      query_id = inline_query["id"]
+      title = inline_query["query"]
       cache_key = Digest::MD5.hexdigest(title)
-      cached_result = read_from_cache(cache_key)
+      cached_result = DynamoStorage.read(cache_key)
 
       if cached_result
         movies = cached_result
       else
         movies = movies(title)
         movies = handle_movie_info(movies)
-        storage_klass.write(cache_key, movies)
+        QueueHandler.send_to_sqs(cache_key, movies)
       end
 
       results = movies.map.with_index do |movie, index|

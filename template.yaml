@@ -7,12 +7,12 @@ Description: >
 
 Globals:
   Function:
-    Timeout: 60
+    Timeout: 30
     MemorySize: 256
 
 Resources:
-  MessagesBucket:
-    Type: AWS::S3::Bucket
+  MessagesQueue:
+    Type: AWS::SQS::Queue
   MovieDB:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -29,6 +29,30 @@ Resources:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5
 
+  EventSaverFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: events.lambda_handler
+      CodeUri: events/
+      Runtime: ruby3.2
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref MovieDB
+      Policies:
+        - Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+              Resource: !GetAtt MovieDB.Arn
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt MessagesQueue.Arn
+
   WebhooksFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -41,25 +65,20 @@ Resources:
         Variables:
           TG_TOKEN: '{{resolve:secretsmanager:CineScribeBot:SecretString:TG_TOKEN}}'
           TMDB_TOKEN: '{{resolve:secretsmanager:CineScribeBot:SecretString:TMDB_TOKEN}}'
-          MESSAGES_BUCKET: !Ref MessagesBucket
           DYNAMODB_TABLE: !Ref MovieDB
-          CACHE_STRATEGY: s3
+          MESSAGES_QUEUE: !Ref MessagesQueue
       Policies:
         - Version: "2012-10-17"
           Statement:
             - Effect: Allow
               Action:
-                - s3:GetObject
-                - s3:PutObject
-                - s3:ListBucket
-              Resource:
-                - !Sub "${MessagesBucket.Arn}"
-                - !Sub "${MessagesBucket.Arn}/*"
-            - Effect: Allow
-              Action:
                 - dynamodb:PutItem
                 - dynamodb:GetItem
               Resource: !GetAtt MovieDB.Arn
+            - Effect: "Allow"
+              Action:
+                - "sqs:SendMessage"
+              Resource: !GetAtt MessagesQueue.Arn
     Metadata:
       DockerTag: ruby3.2-v1
       DockerContext: ./
