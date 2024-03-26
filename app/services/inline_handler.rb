@@ -1,9 +1,10 @@
 require_relative "movies_handler"
 require_relative "responser"
-require_relative "s3_storage"
+require_relative "../concerns/cache_strategy"
 
 class InlineHandler
   extend MoviesHandler
+  extend CacheStrategy
   
   class << self
     def process(inline_query)
@@ -17,7 +18,7 @@ class InlineHandler
       else
         movies = movies(title)
         movies = handle_movie_info(movies)
-        S3Storage.write(cache_key, movies)
+        storage_klass.write(cache_key, movies)
       end
 
       results = movies.map.with_index do |movie, index|
@@ -34,12 +35,6 @@ class InlineHandler
       end
 
       Responser.new(query_id).send_inline_response(results)
-    end
-
-    private
-
-    def read_from_cache(cache_key)
-      S3Storage.read(cache_key)
     end
   end
 end

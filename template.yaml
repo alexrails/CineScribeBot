@@ -13,6 +13,21 @@ Globals:
 Resources:
   MessagesBucket:
     Type: AWS::S3::Bucket
+  MovieDB:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: cache_key
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cache_key
+          KeyType: HASH
+      TimeToLiveSpecification:
+        Enabled: true
+        AttributeName: ttl
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
 
   WebhooksFunction:
     Type: AWS::Serverless::Function
@@ -27,6 +42,8 @@ Resources:
           TG_TOKEN: '{{resolve:secretsmanager:CineScribeBot:SecretString:TG_TOKEN}}'
           TMDB_TOKEN: '{{resolve:secretsmanager:CineScribeBot:SecretString:TMDB_TOKEN}}'
           MESSAGES_BUCKET: !Ref MessagesBucket
+          DYNAMODB_TABLE: !Ref MovieDB
+          CACHE_STRATEGY: s3
       Policies:
         - Version: "2012-10-17"
           Statement:
@@ -38,6 +55,11 @@ Resources:
               Resource:
                 - !Sub "${MessagesBucket.Arn}"
                 - !Sub "${MessagesBucket.Arn}/*"
+            - Effect: Allow
+              Action:
+                - dynamodb:PutItem
+                - dynamodb:GetItem
+              Resource: !GetAtt MovieDB.Arn
     Metadata:
       DockerTag: ruby3.2-v1
       DockerContext: ./
